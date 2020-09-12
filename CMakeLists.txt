@@ -4,7 +4,7 @@
 #
 
 cmake_minimum_required(VERSION 3.7)
-project(tommath VERSION 1.2.0)
+project(libtommath VERSION 1.2.0 LANGUAGES C)
 
 #-----------------------------------------------------------------------------
 # Include cmake modules
@@ -16,58 +16,82 @@ include(sources.cmake)
 #-----------------------------------------------------------------------------
 # library target
 #-----------------------------------------------------------------------------
-add_library(${PROJECT_NAME}
+add_library(libtommath
     ${SOURCES}
 )
+if(WIN32)
+    target_sources(libtommath PRIVATE tommath.def)
+    set_target_properties(libtommath PROPERTIES PREFIX "")
+endif()
 
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(libtommath PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
+set_target_properties(libtommath PROPERTIES OUTPUT_NAME tommath)
+set_target_properties(libtommath PROPERTIES VERSION ${PROJECT_VERSION})
+set_target_properties(libtommath PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
+
+add_library(libtommath::libtommath ALIAS libtommath)
 
 #-----------------------------------------------------------------------------
 # demo target
 #-----------------------------------------------------------------------------
-add_executable(test-target EXCLUDE_FROM_ALL
+
+enable_testing()
+
+add_executable(demo-libtommath EXCLUDE_FROM_ALL
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/shared.c
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/test.c
 )
 
-target_include_directories(test-target PRIVATE
+target_include_directories(demo-libtommath PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(test-target PRIVATE
-    ${PROJECT_NAME}
+target_link_libraries(demo-libtommath PRIVATE libtommath::libtommath)
+
+add_test(NAME demo-libtommath
+    COMMAND demo-libtommath
 )
 
 #-----------------------------------------------------------------------------
 # demo target
 #-----------------------------------------------------------------------------
 add_custom_target(check
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test-target
+    COMMAND demo-libtommath
+    DEPENDS demo-libtommath
 )
-
-add_dependencies(check test-target)
 
 #-----------------------------------------------------------------------------
 # Install/export targets and files
 #-----------------------------------------------------------------------------
 set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+set(PC_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 set(PROJECT_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake")
-set(PROJECT_CONFIG_FILE "${PROJECT_NAME}-config.cmake")
-set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+set(PROJECT_CONFIG_FILE libtommath-config.cmake)
+set(TARGETS_EXPORT_NAME libtommath)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS libtommath
     EXPORT ${TARGETS_EXPORT_NAME}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(FILES ${HEADERS}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+
+#generate .pc file
+set(VERSION "${PROJECT_VERSION}")
+set(PREFIX "${CMAKE_INSTALL_PREFIX}")
+configure_file(libtommath.pc.in libtommath.pc @ONLY)
+
+# install .pc file
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libtommath.pc"
+        DESTINATION "${PC_INSTALL_DIR}"
 )
 
 # generate package version file
@@ -79,18 +103,19 @@ write_basic_package_version_file(
 
 # install version file
 install(FILES ${PROJECT_VERSION_FILE}
-        DESTINATION ${CONFIG_INSTALL_DIR}
+    DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
 # build directory package config
 export(EXPORT ${TARGETS_EXPORT_NAME}
-       FILE ${PROJECT_CONFIG_FILE}
+    FILE ${PROJECT_CONFIG_FILE}
 )
 
 # installed package config
 install(EXPORT ${TARGETS_EXPORT_NAME}
-        DESTINATION ${CONFIG_INSTALL_DIR}
-        FILE ${PROJECT_CONFIG_FILE}
+    NAMESPACE libtommath::
+    DESTINATION "${CONFIG_INSTALL_DIR}"
+    FILE ${PROJECT_CONFIG_FILE}
 )
 
 # add to CMake registry
@@ -127,7 +152,7 @@ endif()
 # general CPack config
 set(CPACK_PACKAGE_DIRECTORY ${CMAKE_BINARY_DIR}/packages)
 message(STATUS "CPack: packages will be generated under ${CPACK_PACKAGE_DIRECTORY}")
-set(CPACK_PACKAGE_NAME "lib${PROJECT_NAME}")
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LibTomMath")
 set(CPACK_PACKAGE_VENDOR "LibTomMath")
@@ -147,8 +172,8 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
 set(CPACK_RPM_PACKAGE_URL "https://www.libtom.net/LibTomMath")
 set(CPACK_RPM_PACKAGE_RELEASE ${PACKAGE_RELEASE_VERSION})
 set(CPACK_RPM_PACKAGE_ARCHITECTURE ${MACHINE_ARCH})
-set(CPACK_RPM_PACKAGE_NAME "lib${PROJECT_NAME}-${PROJECT_VERSION}")
-set(CPACK_RPM_FILE_NAME "lib${PROJECT_NAME}_${PROJECT_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}_${LINUX_DISTRO}-${LINUX_DISTRO_VERSION}_${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
+set(CPACK_RPM_PACKAGE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
+set(CPACK_RPM_FILE_NAME "${PROJECT_NAME}_${PROJECT_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}_${LINUX_DISTRO}-${LINUX_DISTRO_VERSION}_${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
 set(CPACK_RPM_PACKAGE_LICENSE "WTFPL")
 
 include(CPack)

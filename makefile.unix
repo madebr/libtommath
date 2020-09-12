@@ -94,4 +94,4 @@ install: $(LIBMAIN_S)
 	@mkdir -p $(DESTDIR)$(INCPATH) $(DESTDIR)$(LIBPATH)/pkgconfig
 	@cp $(LIBMAIN_S) $(DESTDIR)$(LIBPATH)/
 	@cp $(HEADERS_PUB) $(DESTDIR)$(INCPATH)/
-	@sed -e 's,^prefix=.*,prefix=$(PREFIX),' -e 's,^Version:.*,Version: $(VERSION),' libtommath.pc.in > $(DESTDIR)$(LIBPATH)/pkgconfig/libtommath.pc
+	@sed -e 's,@PREFIX@,$(PREFIX),' -e 's,@VERSION@,$(VERSION_PC),' libtommath.pc.in > $(DESTDIR)$(LIBPATH)/pkgconfig/libtommath.pc
